@@ -25,13 +25,13 @@ from bertvocab import *
 class Parser(object):
     def __init__(self, conf):
         self._conf = conf
-        self._torch_device = torch.device(self._conf.device)  # 'cuda:0':is GPU 0??? yli
+        self._torch_device = torch.device(self._conf.device)  # 
         self._use_cuda, self._cuda_device = ('cuda' == self._torch_device.type, self._torch_device.index)
-        """更改cuda号"""
+       
         if self._use_cuda:
             assert 0 <= self._cuda_device < 8
             os.environ["CUDA_VISIBLE_DEVICES"] = str(self._cuda_device)
-            self._cuda_device = self._conf.device # 使用config.txt的[run]的device = cuda:0/1..参数
+            self._cuda_device = self._conf.device #
            
 
         self._optimizer = None
@@ -116,11 +116,7 @@ class Parser(object):
 
         lstm_input_size = self._conf.word_emb_dim + self._conf.tag_emb_dim
 
-        # 初始化对齐
-        """
-        1 准备数据：准备用于对齐的数据。这包括源语言（汉语）和目标语言（越南语）的嵌入表示，以及相应的分词器（tokenizer）。
-        2 初始化Alignment对象：使用提取的汉语和越南语嵌入表示以及Alignment的对齐策略来初始化Alignment对象。
-        """
+        
 
         align_strategy = "bilingual_dictionary"
         bilingual_dictionary = "/home/ljj/3-biaffine-taketurn/bilingual_dict/vietnamese.txt"
@@ -263,7 +259,7 @@ class Parser(object):
         counter = 0
         subwords, subword_idxs, subword_masks, token_starts_masks, subwords_belong_to_word_lists, subwordids_belong_to_word_lists =[], [], [], [], [],[]
         
-        for e in wordbert: # 将wordbert中的每个句子进行分词，并获取子词的ID、掩码和标记起始位置。
+        for e in wordbert: 
             
             subword, token_start_idxs, subword_ids, mask, token_starts, subwords_belong_to_word_list, subwordids_belong_to_word_list = self.bertvocab.subword_tokenize_to_ids(e)
             token_starts[[0, -1]] = 0        
@@ -312,7 +308,7 @@ class Parser(object):
         else:
             classfication_module = None    
 
-        """控制是多任务还是单任务"""
+      
         if self._conf.is_multi:
             arc_scores, label_scores = self.mlp_biaffine_module(domain_id, lstm_out, is_training)
         else:
@@ -321,8 +317,8 @@ class Parser(object):
 
     def classfication_module(self, shared_lstm_out):
        
-        classficationd = self._classficationD[0](shared_lstm_out)  # 主任务
-        # nadv_class = self._classficationD[1](private_lstm_out)    # 对抗
+        classficationd = self._classficationD[0](shared_lstm_out)  
+        # nadv_class = self._classficationD[1](private_lstm_out)    
         classficationd = classficationd.transpose(0, 1)
         
         return classficationd  # , nadv_class
@@ -334,12 +330,12 @@ class Parser(object):
         mlp_out = self._mlp_layer[domain_id - 1](lstm_out)
         if is_training:
             mlp_out = drop_sequence_shared_mask(mlp_out, self._conf.mlp_output_dropout_ratio)
-        mlp_out = mlp_out.transpose(0, 1)  # 进行转置满足后续的维度要求
+        mlp_out = mlp_out.transpose(0, 1)  
         mlp_arc_dep, mlp_arc_head, mlp_label_dep, mlp_label_head = \
             torch.split(mlp_out, [self._conf.mlp_output_dim_arc, self._conf.mlp_output_dim_arc, \
                                   self._conf.mlp_output_dim_rel, self._conf.mlp_output_dim_rel], dim=2)
         arc_scores = self._bi_affine_layer_arc[domain_id - 1](mlp_arc_dep, mlp_arc_head)
-        arc_scores = torch.squeeze(arc_scores, dim=3)  # 弧的维度被减少
+        arc_scores = torch.squeeze(arc_scores, dim=3)  
         label_scores = self._bi_affine_layer_label[domain_id - 1](mlp_label_dep, mlp_label_head)
         return arc_scores, label_scores
 
@@ -404,14 +400,14 @@ class Parser(object):
         return adv_loss
 
     def train_set(self, bc, pc, pb, zx, domain, domain_src, domain_tgt, dataset, unlabel):
-        """这个函数似乎用于训练数据集的一个迭代。"""
+        
         inst_num, loss = self.train_or_eval_one_batch(dataset[domain], is_training=True, unlabel=unlabel)
         domain_tgt += 1
         domain = domain_tgt % 2  # 修改
         return domain_src, domain_tgt, domain, inst_num, loss
 
     def train_set_label(self, bc, pb, zx, domain, domain_src, domain_tgt, dataset, unlabel, eval_iter=-1):
-        """这个函数似乎用于训练标签数据集的一个迭代，区分了不同的领域。"""
+       
         if (domain_tgt < bc):
             domain = 0
         elif (bc <= domain_tgt < bc + pb):
@@ -424,13 +420,13 @@ class Parser(object):
         return domain_src, domain_tgt, domain, inst_num, loss
 
     def train(self):
-        warnings.filterwarnings("ignore", category=UserWarning)  # 忽略警告
+        warnings.filterwarnings("ignore", category=UserWarning)  
         print("begin train")
         update_step_cnt, eval_cnt, best_eval_cnt, best_accuracy = 0, 0, 0, 0.
         self._eval_metrics.clear()
-        current_las = 0  # 以上都是初始化
-        self.set_training_mode(is_training=True)  # 设置训练模型开始-以确保在训练过程中使用了 dropout 和 batch normalization。
-        # label_batch_num = self._train_datasets[0].batch_num  # 单个数据集
+        current_las = 0 
+        self.set_training_mode(is_training=True) 
+        # label_batch_num = self._train_datasets[0].batch_num  
         ch, vi = self._train_datasets[0].batch_num, self._train_datasets[1].batch_num
         domain, domain_src, domain_tgt, train_iter, udomain, udomain_src, udomain_tgt, s_cnt, t_cnt = 0, 0, 0, 0, 0, 0, 0, 0, 0
         datasets_names = ["ch", "vi"]
@@ -449,24 +445,24 @@ class Parser(object):
             print(f"parser is training on dataset {dataset_name}:{train_iter}")
             inst_num, loss = self.train_or_eval_one_batch(self._train_datasets[dt], is_training=True, unlabel=False, eval_iter=-1)         
             
-            domain = (domain + 1) % 2  # domain+1迭代，对2取余
+            domain = (domain + 1) % 2  
             # train_iter += 1ss
 
             assert inst_num > 0
             assert loss is not None
-            """优化---三部曲"""
-            loss.backward()  # loss反向传播
+            
+            loss.backward()  
             nn.utils.clip_grad_norm_(self._all_params_requires_grad, max_norm=self._conf.clip)  
-            self._optimizer.step()  # 优化器
-            self.zero_grad()  # 梯度清0
+            self._optimizer.step()  
+            self.zero_grad()  
 
             update_step_cnt += 1
             # print("update_step_cnt ",update_step_cnt)
             use_unlabel = False
-            # eval_every_update_step_num = label_batch_num  # 单个数据集
+            # eval_every_update_step_num = label_batch_num  
             eval_every_update_step_num = ch + vi  
 
-            """数据集上进行评估"""
+            
             if 0 == update_step_cnt % eval_every_update_step_num:
                 eval_cnt += 1
                 domain, domain_src, domain_tgt, train_iter, udomain, udomain_src, udomain_tgt, u_cnt, l_cnt = 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -474,7 +470,7 @@ class Parser(object):
                 self._eval_metrics.clear()
 
                 print("begin evaluate")
-                # 验证集评估
+               
                 self.evaluate(self._dev_datasets[0], use_unlabel)
                 self._eval_metrics.compute_and_output(self._dev_datasets[0], eval_cnt, use_unlabel)
                 if use_unlabel == False:
@@ -503,7 +499,7 @@ class Parser(object):
                 break
 
     def train_or_eval_one_batch(self, dataset, is_training, unlabel=False, eval_iter=-1):
-        warnings.filterwarnings("ignore", category=UserWarning)  # 忽略警告
+        warnings.filterwarnings("ignore", category=UserWarning) 
         # print(dataset.get_one_batch)
         one_batch, total_word_num, max_len = dataset.get_one_batch(rewind=is_training)
         # NOTICE: total_word_num does not include w_0
@@ -511,7 +507,6 @@ class Parser(object):
             print("one_batch is none " + dataset.file_name_short)
             return 0, None
         if unlabel == False:
-            # 构建一个批次的数据
             words, ext_words, tags, gold_heads, gold_labels, lstm_masks, domains, domains_nadv, word_lens, chars_i, wordbert = \
                 self.compose_batch_data_variable(one_batch, max_len)
 
@@ -537,13 +532,13 @@ class Parser(object):
         return len(one_batch), final_loss
 
     def evaluate(self, datasets, use_unlabel, output_file_name=None):
-        warnings.filterwarnings("ignore", category=UserWarning)  # 忽略警告
+        warnings.filterwarnings("ignore", category=UserWarning)  
         self.set_training_mode(is_training=False)
         batchnum = datasets.batch_num #ud-ch-train:201   ud_vi_test:
         domain, domain_src, domain_tgt, eval_iter, udomain, udomain_src, udomain_tgt, s_cnt, t_cnt = 0, 0, 0, 0, 0, 0, 0, 0, 0
         datasets_names = ["ch", "vi"]
         while True:
-            if datasets.domain_id == 1 :  # ud_ch=86
+            if datasets.domain_id == 1 :  
                 dataset_name = "ch" 
                 print(f"Evaluating {dataset_name}: Batch {eval_iter}")
                 inst_num, loss = self.train_or_eval_one_batch(datasets, is_training=False, unlabel=False,
@@ -556,18 +551,18 @@ class Parser(object):
                 inst_num, loss = self.train_or_eval_one_batch(datasets, is_training=False, unlabel=False,
                                                               eval_iter=-1)
                 
-            """datasets[0] 表示第一个训练数据集"""
+       
             eval_iter += 1
             if 0 == inst_num:
                 break
             assert loss is not None
         
-        # 生成预测的test文件
+        #
         if output_file_name is not None:
             with open(output_file_name, 'w', encoding='utf-8') as out_file:
                 all_inst = datasets.all_inst
                 for inst in all_inst:
-                    inst.write(out_file)  # 每一个填充后的实例写入
+                    inst.write(out_file)  
 
 
     @staticmethod
@@ -666,7 +661,7 @@ class Parser(object):
         print('Delete model %s done.' % path)
 
     def load_model(self, path, eval_num):
-        path = os.path.join(path, 'models-%d/' % eval_num) #测试调试的时候需要修改config.txt中的model_eval_num为保存的最好的模型编号
+        path = os.path.join(path, 'models-%d/' % eval_num) 
         print("Trying to load model from:", path)
         assert os.path.exists(path), f"Model path does not exist: {path}"
         # assert os.path.exists(path)
@@ -752,7 +747,7 @@ class Parser(object):
         if max_sz > sz:
             chars_i_pad = np.zeros((max_sz - sz, 39), dtype=data_type_int)
             inst.chars_i = np.concatenate((inst.chars_i, chars_i_pad), axis=0)
-        if unlabel == False:  # 把不需要的标记填充掉
+        if unlabel == False:  
             return np.pad(inst.words_i, pad_sz, 'constant', constant_values=0), \
                    np.pad(inst.ext_words_i, pad_sz, 'constant', constant_values=0), \
                    np.pad(inst.tags_i, pad_sz, 'constant', constant_values=0), \
