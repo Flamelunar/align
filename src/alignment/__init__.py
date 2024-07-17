@@ -40,7 +40,7 @@ class WordEmbedding:
         else:
             raise ValueError(
                 f"{model} seems to be neither a fastText nor Word2Vec model."
-            ) # 如果不属于两者模型就报错
+            ) 
 
     def has_subword_info(self):
         return self.kind == "fasttext"
@@ -78,13 +78,12 @@ def get_subword_embeddings_in_word_embedding_space(
     b = subword_idxs.reshape(-1)
     one_batch_id = b.tolist()
 
-    words, freqs = model.get_words_and_freqs()  # 模型中获取所有单词和频率
+    words, freqs = model.get_words_and_freqs()  
 
     if max_n_word_vectors is None:
-        max_n_word_vectors = len(words) # 不指定就取最长，所有单词向量2000000
-
+        max_n_word_vectors = len(words) 
     sources = {} 
-    embs_matrix = np.zeros((one_batch_id_num, model.get_dimension())) # 初始化全0矩阵 (ch,300)  (vi,300)
+    embs_matrix = np.zeros((one_batch_id_num, model.get_dimension())) 
 
     if use_subword_info:
         if not model.has_subword_info():
@@ -92,10 +91,10 @@ def get_subword_embeddings_in_word_embedding_space(
 
         for id, i in zip(one_batch_id, range(one_batch_id_num)):
             
-            token = tokenizer.decode(id).strip()  # 分词器解码标记序列
+            token = tokenizer.decode(id).strip() 
             embs_matrix[i] = model.get_word_vector(token)  #1980*300
    
-    else:   # 如果不使用子词信息
+    else:   
         embs = {}
         v = []
         vocab = tokenizer.get_vocab()
@@ -125,7 +124,6 @@ def get_subword_embeddings_in_word_embedding_space(
                 tokenizer.encode(" " + word, add_special_tokens=False),
             ]:
                 for token_id in set(tokenized):
-                    # 对每个单词添加id索引
                     if token_id not in embs:
                         continue
                     embs[token_id].append(i)
@@ -133,16 +131,16 @@ def get_subword_embeddings_in_word_embedding_space(
             if i not in embs:
                 continue
             else:
-                if len(embs[i]) == 0 : # 当前行长度=0，没有单词映射则跳过
+                if len(embs[i]) == 0 : 
                     continue
             
 
-            weight = np.array([freqs[idx] for idx in embs[i]]) # 计算权重，使用单词频率作为权重
-            weight = weight / weight.sum()  # 获得小数表示，降低权重
+            weight = np.array([freqs[idx] for idx in embs[i]]) 
+            weight = weight / weight.sum()  
 
-            vectors = [model.get_word_vector(words[idx]) for idx in embs[i]] # 获取每个关联单词的单词嵌入向量。
+            vectors = [model.get_word_vector(words[idx]) for idx in embs[i]] 
 
-            sources[tokenizer.convert_ids_to_tokens([i])[0]] = embs[i]  # 存储每个标记对应哪一个单词即：embs表示
+            sources[tokenizer.convert_ids_to_tokens([i])[0]] = embs[i]  
             embs_matrix[i] = (np.stack(vectors) * weight[:, np.newaxis]).sum(axis=0)
     return embs_matrix, sources
 
@@ -159,7 +157,7 @@ def load_embeddings(identifier: str, verbose=True):
 
         path = CACHE_DIR / f"cc.{identifier}.300.bin"
 
-    return fasttext.load_model(str(path))  # 返回模型
+    return fasttext.load_model(str(path))  
 
 
 def create_target_embeddings(
