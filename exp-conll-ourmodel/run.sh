@@ -1,4 +1,4 @@
-cudaN=0 #   ʾ  0  1    gpu    ѡ 񣬾     parser   滻ѡ  
+cudaN=0 #   
 des="conll-bucketing-pad"
 exe="python ../src/main.py --exp-des $des --device cuda:$cudaN --config_file config.txt"
 #$exe --is_dictionary_exist 0 --is_train 1 --is_test 0 > log.create-dict 2>&1  #  ֵ 
